@@ -18,14 +18,12 @@ export const Authenticate: React.FC = () => {
         const tokenType = params.get('stytch_token_type');
         
         // Log all params for debugging
-        // ('URL params:', Object.fromEntries(params.entries()));
-        // ('Authentication attempt:', { token: !!token, tokenType });
+
 
         if (!token) {
           // Check if we're coming back from OAuth (which might not have a token param)
           const pkceCodeVerifier = params.get('pkce_code_verifier');
           if (pkceCodeVerifier) {
-            // ('OAuth callback detected with PKCE');
             // This is an OAuth callback, the session should already be set
             // Just redirect to home
             setTimeout(() => navigate('/', { replace: true }), 100);
