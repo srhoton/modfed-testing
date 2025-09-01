@@ -43,8 +43,8 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
 
-  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Error caught by boundary - could be logged to error tracking service
+    // Log error to console for debugging
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
   override render(): React.ReactNode {
