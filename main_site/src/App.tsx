@@ -58,7 +58,9 @@ const FederatedComponentWrapper = memo<{
 });
 FederatedComponentWrapper.displayName = 'FederatedComponentWrapper';
 
+
 // Main App component
+
 const App: React.FC = () => {
   const { isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
