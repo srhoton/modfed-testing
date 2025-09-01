@@ -23,19 +23,15 @@ const mockStytchClient = {
   },
 };
 
+const mockUseStytchMemberSession = vi.fn();
+const mockUseStytchMember = vi.fn();
+const mockUseStytchB2BClient = vi.fn(() => mockStytchClient);
+
 vi.mock('@stytch/react/b2b', () => ({
   StytchB2BProvider: vi.fn(({ children }) => <>{children}</>),
-  useStytchB2BClient: vi.fn(() => mockStytchClient),
-  useStytchMemberSession: vi.fn(() => ({
-    session: null,
-    isInitialized: false,
-    fromCache: false,
-  })),
-  useStytchMember: vi.fn(() => ({
-    member: null,
-    isInitialized: false,
-    fromCache: false,
-  })),
+  useStytchB2BClient: () => mockUseStytchB2BClient(),
+  useStytchMemberSession: () => mockUseStytchMemberSession(),
+  useStytchMember: () => mockUseStytchMember(),
 }));
 
 vi.mock('@stytch/vanilla-js/b2b', () => ({
@@ -74,13 +70,12 @@ describe('AuthContext', () => {
   };
 
   it('provides initial unauthenticated state', () => {
-    const { useStytchMemberSession, useStytchMember } = require('@stytch/react/b2b');
-    useStytchMemberSession.mockReturnValue({
+    mockUseStytchMemberSession.mockReturnValue({
       session: null,
       isInitialized: true,
       fromCache: false,
     });
-    useStytchMember.mockReturnValue({
+    mockUseStytchMember.mockReturnValue({
       member: null,
       isInitialized: true,
       fromCache: false,
@@ -95,13 +90,12 @@ describe('AuthContext', () => {
   });
 
   it('provides authenticated state when session and member exist', () => {
-    const { useStytchMemberSession, useStytchMember } = require('@stytch/react/b2b');
-    useStytchMemberSession.mockReturnValue({
+    mockUseStytchMemberSession.mockReturnValue({
       session: mockSession,
       isInitialized: true,
       fromCache: false,
     });
-    useStytchMember.mockReturnValue({
+    mockUseStytchMember.mockReturnValue({
       member: mockMember,
       isInitialized: true,
       fromCache: false,
@@ -116,13 +110,12 @@ describe('AuthContext', () => {
   });
 
   it('shows loading state when not initialized', () => {
-    const { useStytchMemberSession, useStytchMember } = require('@stytch/react/b2b');
-    useStytchMemberSession.mockReturnValue({
+    mockUseStytchMemberSession.mockReturnValue({
       session: null,
       isInitialized: false,
       fromCache: false,
     });
-    useStytchMember.mockReturnValue({
+    mockUseStytchMember.mockReturnValue({
       member: null,
       isInitialized: false,
       fromCache: false,
@@ -135,13 +128,12 @@ describe('AuthContext', () => {
   });
 
   it('calls logout function correctly', async () => {
-    const { useStytchMemberSession, useStytchMember } = require('@stytch/react/b2b');
-    useStytchMemberSession.mockReturnValue({
+    mockUseStytchMemberSession.mockReturnValue({
       session: mockSession,
       isInitialized: true,
       fromCache: false,
     });
-    useStytchMember.mockReturnValue({
+    mockUseStytchMember.mockReturnValue({
       member: mockMember,
       isInitialized: true,
       fromCache: false,

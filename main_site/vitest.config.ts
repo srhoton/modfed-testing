@@ -29,6 +29,9 @@ export default defineConfig({
       '@hooks': path.resolve(__dirname, './src/hooks'),
       '@utils': path.resolve(__dirname, './src/utils'),
       '@types': path.resolve(__dirname, './src/types'),
+      // Mock federated modules for testing
+      'fed-site/FederatedContent': path.resolve(__dirname, './src/test/mocks/FederatedContent.tsx'),
+      'fed-site/FederatedCard': path.resolve(__dirname, './src/test/mocks/FederatedCard.tsx'),
     },
   },
 });

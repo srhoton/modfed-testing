@@ -20,6 +20,9 @@ const mockStytchClient = {
   },
 };
 
+const mockUseAuth = vi.fn();
+const mockUseStytchAuth = vi.fn();
+
 // Mock React Router
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -28,6 +31,11 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   };
 });
+
+// Mock useStytchAuth hook
+vi.mock('../hooks/useStytchAuth', () => ({
+  useStytchAuth: () => mockUseStytchAuth(),
+}));
 
 // Mock Stytch
 vi.mock('@stytch/react/b2b', () => ({
@@ -49,16 +57,10 @@ vi.mock('@stytch/vanilla-js/b2b', () => ({
   StytchB2BUIClient: vi.fn().mockImplementation(() => mockStytchClient),
 }));
 
-// Mock useAuth at module level
+// Mock AuthContext
 vi.mock('../contexts/AuthContext', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useAuth: vi.fn(() => ({
-    member: null,
-    session: null,
-    isLoading: false,
-    isAuthenticated: false,
-    logout: vi.fn(),
-  })),
+  useAuth: () => mockUseAuth(),
 }));
 
 describe('Authenticate Component', () => {
@@ -75,13 +77,20 @@ describe('Authenticate Component', () => {
   });
 
   const renderAuthenticate = (isAuthenticated = false) => {
-    const { useAuth } = require('../contexts/AuthContext');
-    useAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue({
       member: isAuthenticated ? { email_address: 'test@example.com' } : null,
       session: isAuthenticated ? {} : null,
       isLoading: false,
       isAuthenticated,
       logout: vi.fn(),
+    });
+
+    mockUseStytchAuth.mockReturnValue({
+      authenticate: vi.fn(),
+      logout: vi.fn(),
+      isAuthenticating: false,
+      authError: null,
+      clearError: vi.fn(),
     });
 
     const mockStytchClientInstance = new StytchB2BUIClient('test-token', { env: 'test' });

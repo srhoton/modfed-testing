@@ -1,8 +1,29 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FederatedContent } from '@/components/FederatedContent';
 
+// Mock the useRemoteAuth hook
+vi.mock('@/hooks/useRemoteAuth', () => ({
+  useRemoteAuth: vi.fn(),
+}));
+
+import { useRemoteAuth } from '@/hooks/useRemoteAuth';
+
 describe('FederatedContent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Set up authenticated state by default
+    (useRemoteAuth as any).mockReturnValue({
+      user: { 
+        email: 'test@example.com', 
+        memberId: 'member-123', 
+        organizationId: 'org-456' 
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+  });
+
   it('renders with default title', () => {
     render(<FederatedContent />);
     
@@ -55,8 +76,9 @@ describe('FederatedContent', () => {
     const customClass = 'custom-test-class';
     const { container } = render(<FederatedContent className={customClass} />);
     
-    const contentDiv = container.firstChild as HTMLElement;
-    expect(contentDiv.classList.contains(customClass)).toBe(true);
+    // Find the gradient div within the structure
+    const gradientDiv = container.querySelector('.bg-gradient-to-r');
+    expect(gradientDiv?.classList.contains(customClass)).toBe(true);
   });
 
   it('displays all information badges', () => {
@@ -65,5 +87,40 @@ describe('FederatedContent', () => {
     expect(screen.getByText('Remote Module')).toBeInTheDocument();
     expect(screen.getByText('Port: 3001')).toBeInTheDocument();
     expect(screen.getByText('fed-site')).toBeInTheDocument();
+  });
+
+  it('displays authenticated user email', () => {
+    render(<FederatedContent />);
+    
+    expect(screen.getByText(/authenticated as: test@example.com/i)).toBeInTheDocument();
+  });
+
+  it('displays authenticated badge when user is authenticated', () => {
+    render(<FederatedContent />);
+    
+    expect(screen.getByText('✓ Authenticated')).toBeInTheDocument();
+  });
+
+  describe('when not authenticated', () => {
+    beforeEach(() => {
+      (useRemoteAuth as any).mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    });
+
+    it('shows authentication required message', () => {
+      render(<FederatedContent />);
+      
+      expect(screen.getByText('Authentication Required')).toBeInTheDocument();
+      expect(screen.getByText('You must be authenticated to view this content.')).toBeInTheDocument();
+    });
+
+    it('does not show federated content', () => {
+      render(<FederatedContent />);
+      
+      expect(screen.queryByText(/this content is coming from the/i)).not.toBeInTheDocument();
+    });
   });
 });
