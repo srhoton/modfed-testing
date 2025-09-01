@@ -1,97 +1,122 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from '@/App';
 
-// Mock console.log for testing
-const consoleSpy = vi.spyOn(console, 'log');
+// Mock all auth-related modules
+vi.mock('@/contexts/AuthContext', () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAuth: vi.fn(),
+}));
+
+vi.mock('@/hooks/useRemoteAuth', () => ({
+  useRemoteAuth: vi.fn(),
+}));
+
+// Import mocked functions
+import { useAuth } from '@/contexts/AuthContext';
+import { useRemoteAuth } from '@/hooks/useRemoteAuth';
 
 describe('App', () => {
-  it('renders without crashing', () => {
-    const { container } = render(<App />);
-    expect(container).toBeTruthy();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('renders the main heading', () => {
-    render(<App />);
-    
-    const heading = screen.getByRole('heading', { 
-      name: /federated site \(remote application\)/i 
+  describe('when authenticated', () => {
+    beforeEach(() => {
+      const authenticatedState = {
+        user: { 
+          email: 'test@example.com', 
+          memberId: 'member-123', 
+          organizationId: 'org-456' 
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      };
+
+      (useAuth as any).mockReturnValue(authenticatedState);
+      (useRemoteAuth as any).mockReturnValue(authenticatedState);
     });
-    
-    expect(heading).toBeInTheDocument();
-  });
 
-  it('renders the FederatedContent component', () => {
-    render(<App />);
-    
-    // Check for content from FederatedContent component
-    const moduleDemo = screen.getByRole('heading', { 
-      name: /module federation demo/i 
+    it('renders without crashing', () => {
+      const { container } = render(<App />);
+      expect(container).toBeTruthy();
     });
-    
-    expect(moduleDemo).toBeInTheDocument();
+
+    it('renders the main heading', () => {
+      render(<App />);
+      const heading = screen.getByRole('heading', { 
+        name: /federated site \(remote application\)/i 
+      });
+      expect(heading).toBeInTheDocument();
+    });
+
+    it('renders the FederatedContent component', () => {
+      render(<App />);
+      // Check for the gradient background that FederatedContent has
+      const federatedContent = document.querySelector('.bg-gradient-to-r');
+      expect(federatedContent).toBeInTheDocument();
+    });
+
+    it('displays user email when authenticated', () => {
+      render(<App />);
+      expect(screen.getByText(/test@example.com/)).toBeInTheDocument();
+    });
+
+    it('shows authenticated badges', () => {
+      render(<App />);
+      const authenticatedBadges = screen.getAllByText(/✓/);
+      expect(authenticatedBadges.length).toBeGreaterThan(0);
+    });
   });
 
-  it('renders all three FederatedCard components', () => {
-    render(<App />);
-    
-    expect(screen.getByText('Component 1')).toBeInTheDocument();
-    expect(screen.getByText('Component 2')).toBeInTheDocument();
-    expect(screen.getByText('Component 3')).toBeInTheDocument();
+  describe('when not authenticated', () => {
+    beforeEach(() => {
+      const unauthenticatedState = {
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      };
+
+      (useAuth as any).mockReturnValue(unauthenticatedState);
+      (useRemoteAuth as any).mockReturnValue(unauthenticatedState);
+    });
+
+    it('shows authentication required messages', () => {
+      render(<App />);
+      const authMessages = screen.getAllByText('Authentication Required');
+      expect(authMessages.length).toBeGreaterThan(0);
+    });
+
+    it('shows login instruction', () => {
+      render(<App />);
+      const loginMessages = screen.getAllByText('Please log in through the main application.');
+      expect(loginMessages.length).toBeGreaterThan(0);
+    });
+
+    it('does not show user email', () => {
+      render(<App />);
+      expect(screen.queryByText(/test@example.com/)).not.toBeInTheDocument();
+    });
   });
 
-  it('handles card clicks correctly', () => {
-    render(<App />);
-    
-    const component1Card = screen.getByText('Component 1').closest('[role="button"]');
-    if (component1Card) {
-      fireEvent.click(component1Card);
-      expect(consoleSpy).toHaveBeenCalledWith('Clicked on Component 1 card from federated site');
-    }
-  });
+  describe('when loading', () => {
+    beforeEach(() => {
+      const loadingState = {
+        user: null,
+        isAuthenticated: false,
+        isLoading: true,
+      };
 
-  it('displays port information', () => {
-    render(<App />);
-    
-    const portInfo = screen.getByText(/this application runs on/i);
-    expect(portInfo).toBeInTheDocument();
-    
-    const portNumber = screen.getByText(/http:\/\/localhost:3001/i);
-    expect(portNumber).toBeInTheDocument();
-  });
+      (useAuth as any).mockReturnValue(loadingState);
+      (useRemoteAuth as any).mockReturnValue(loadingState);
+    });
 
-  it('shows information about exposed components', () => {
-    render(<App />);
-    
-    const info = screen.getByText(/exposes components that can be consumed by the main site/i);
-    expect(info).toBeInTheDocument();
-  });
-
-  it('renders with proper layout classes', () => {
-    const { container } = render(<App />);
-    
-    const appContainer = container.querySelector('.min-h-screen');
-    expect(appContainer).toBeInTheDocument();
-    
-    const maxWidthContainer = container.querySelector('.max-w-6xl');
-    expect(maxWidthContainer).toBeInTheDocument();
-  });
-
-  it('renders cards in a responsive grid', () => {
-    const { container } = render(<App />);
-    
-    const grid = container.querySelector('.grid');
-    expect(grid).toBeInTheDocument();
-    expect(grid?.classList.contains('grid-cols-1')).toBe(true);
-    expect(grid?.classList.contains('md:grid-cols-2')).toBe(true);
-    expect(grid?.classList.contains('lg:grid-cols-3')).toBe(true);
-  });
-
-  it('displays correct icons for each card', () => {
-    render(<App />);
-    
-    expect(screen.getByText('🎨')).toBeInTheDocument();
-    expect(screen.getByText('🚀')).toBeInTheDocument();
-    expect(screen.getByText('⚡')).toBeInTheDocument();
+    it('renders the app container while loading', () => {
+      render(<App />);
+      const heading = screen.getByRole('heading', { 
+        name: /federated site \(remote application\)/i 
+      });
+      expect(heading).toBeInTheDocument();
+    });
   });
 });

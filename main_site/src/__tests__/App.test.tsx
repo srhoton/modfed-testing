@@ -28,32 +28,19 @@ const mockStytchClient = {
   },
 };
 
+const mockUseStytchMemberSession = vi.fn();
+const mockUseStytchMember = vi.fn();
+const mockUseStytchB2BClient = vi.fn(() => mockStytchClient);
+
 vi.mock('@stytch/react/b2b', () => ({
   StytchB2BProvider: vi.fn(({ children }) => <>{children}</>),
-  useStytchB2BClient: vi.fn(() => mockStytchClient),
-  useStytchMemberSession: vi.fn(() => ({
-    session: null,
-    isInitialized: true,
-    fromCache: false,
-  })),
-  useStytchMember: vi.fn(() => ({
-    member: null,
-    isInitialized: true,
-    fromCache: false,
-  })),
+  useStytchB2BClient: () => mockUseStytchB2BClient(),
+  useStytchMemberSession: () => mockUseStytchMemberSession(),
+  useStytchMember: () => mockUseStytchMember(),
 }));
 
 vi.mock('@stytch/vanilla-js/b2b', () => ({
   StytchB2BUIClient: vi.fn().mockImplementation(() => mockStytchClient),
-}));
-
-// Mock federated components
-vi.mock('fed-site/FederatedContent', () => ({
-  default: () => <div>Federated Content</div>,
-}));
-
-vi.mock('fed-site/FederatedCard', () => ({
-  default: ({ title }: { title: string }) => <div>Federated Card: {title}</div>,
 }));
 
 describe('App', () => {
@@ -62,15 +49,13 @@ describe('App', () => {
   });
 
   const renderApp = (isAuthenticated = false, member: any = null) => {
-    const { useStytchMemberSession, useStytchMember } = require('@stytch/react/b2b');
-    
-    useStytchMemberSession.mockReturnValue({
+    mockUseStytchMemberSession.mockReturnValue({
       session: isAuthenticated ? { member_session_id: 'test-session' } : null,
       isInitialized: true,
       fromCache: false,
     });
     
-    useStytchMember.mockReturnValue({
+    mockUseStytchMember.mockReturnValue({
       member: isAuthenticated ? member : null,
       isInitialized: true,
       fromCache: false,

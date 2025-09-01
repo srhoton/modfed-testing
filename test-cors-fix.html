@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Fix Verification</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { border-left: 4px solid #22c55e; }
+        .failure { border-left: 4px solid #ef4444; }
+        .pending { border-left: 4px solid #f59e0b; }
+        h1 { color: #1f2937; }
+        h2 { color: #4b5563; font-size: 1.2em; }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 CORS Fix Verification</h1>
+    <p>Testing if the federated content can be loaded from the main site...</p>
+    
+    <div id="test-results"></div>
+    
+    <script>
+        const results = document.getElementById('test-results');
+        
+        function addResult(title, status, details) {
+            const div = document.createElement('div');
+            div.className = `test-result ${status}`;
+            const icon = status === 'success' ? '✅' : status === 'failure' ? '❌' : '⏳';
+            div.innerHTML = `
+                <h2>${icon} ${title}</h2>
+                <p>${details}</p>
+            `;
+            results.appendChild(div);
+        }
+        
+        // Test 1: Fetch remoteEntry.js with CORS
+        addResult('Remote Entry Fetch', 'pending', 'Attempting to fetch remoteEntry.js...');
+        
+        fetch('http://localhost:3001/assets/remoteEntry.js', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/javascript',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // Update the result
+                const pendingDiv = results.querySelector('.pending');
+                pendingDiv.className = 'test-result success';
+                pendingDiv.innerHTML = `
+                    <h2>✅ Remote Entry Fetch</h2>
+                    <p>Successfully fetched remoteEntry.js! CORS is properly configured.</p>
+                    <p><code>Status: ${response.status}</code></p>
+                    <p><code>Headers: Access-Control-Allow-Origin: ${response.headers.get('Access-Control-Allow-Origin') || 'Not set (but working)'}</code></p>
+                `;
+                return response.text();
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        })
+        .then(text => {
+            // Test 2: Verify content
+            if (text.includes('FederatedContent') && text.includes('FederatedCard')) {
+                addResult(
+                    'Module Verification',
+                    'success',
+                    'Remote entry contains expected federated modules (FederatedContent, FederatedCard)'
+                );
+            } else {
+                addResult(
+                    'Module Verification',
+                    'failure',
+                    'Remote entry does not contain expected modules'
+                );
+            }
+            
+            // Test 3: Try to load as a script
+            const script = document.createElement('script');
+            script.src = 'http://localhost:3001/assets/remoteEntry.js';
+            script.onload = () => {
+                addResult(
+                    'Script Loading',
+                    'success',
+                    'Remote entry script loaded successfully via script tag'
+                );
+                
+                // Test 4: Check if federation globals are available
+                if (window.__federation_shared__) {
+                    addResult(
+                        'Federation Globals',
+                        'success',
+                        'Module federation globals are available'
+                    );
+                } else {
+                    addResult(
+                        'Federation Globals',
+                        'failure',
+                        'Module federation globals not found'
+                    );
+                }
+            };
+            script.onerror = () => {
+                addResult(
+                    'Script Loading',
+                    'failure',
+                    'Failed to load remote entry script via script tag'
+                );
+            };
+            document.head.appendChild(script);
+        })
+        .catch(error => {
+            // Update the pending result to failure
+            const pendingDiv = results.querySelector('.pending');
+            pendingDiv.className = 'test-result failure';
+            pendingDiv.innerHTML = `
+                <h2>❌ Remote Entry Fetch</h2>
+                <p>Failed to fetch remoteEntry.js: ${error.message}</p>
+                <p>This indicates CORS is still blocking the request.</p>
+            `;
+        });
+        
+        // Test 5: Test OPTIONS preflight
+        setTimeout(() => {
+            fetch('http://localhost:3001/assets/remoteEntry.js', {
+                method: 'OPTIONS',
+                headers: {
+                    'Origin': 'http://localhost:3000',
+                    'Access-Control-Request-Method': 'GET',
+                }
+            })
+            .then(response => {
+                addResult(
+                    'OPTIONS Preflight',
+                    response.ok ? 'success' : 'failure',
+                    response.ok 
+                        ? 'OPTIONS preflight request successful'
+                        : `OPTIONS request failed with status ${response.status}`
+                );
+            })
+            .catch(error => {
+                addResult(
+                    'OPTIONS Preflight',
+                    'failure',
+                    `OPTIONS request failed: ${error.message}`
+                );
+            });
+        }, 1000);
+        
+        // Summary
+        setTimeout(() => {
+            const successCount = results.querySelectorAll('.success').length;
+            const failureCount = results.querySelectorAll('.failure').length;
+            
+            addResult(
+                'Test Summary',
+                successCount > failureCount ? 'success' : 'failure',
+                `<strong>Results:</strong> ${successCount} passed, ${failureCount} failed<br>
+                <strong>Conclusion:</strong> ${
+                    successCount >= 3 
+                        ? 'CORS is properly configured! The main site can now load federated content.'
+                        : 'CORS issues may still exist. Check the server configuration.'
+                }`
+            );
+        }, 3000);
+    </script>
+</body>
+</html>

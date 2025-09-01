@@ -1,8 +1,29 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FederatedCard } from '@/components/FederatedCard';
 
+// Mock the useRemoteAuth hook
+vi.mock('@/hooks/useRemoteAuth', () => ({
+  useRemoteAuth: vi.fn(),
+}));
+
+import { useRemoteAuth } from '@/hooks/useRemoteAuth';
+
 describe('FederatedCard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Set up authenticated state by default
+    (useRemoteAuth as any).mockReturnValue({
+      user: { 
+        email: 'test@example.com', 
+        memberId: 'member-123', 
+        organizationId: 'org-456' 
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+  });
+
   it('renders with required props', () => {
     render(<FederatedCard title="Test Card" />);
     
@@ -80,6 +101,13 @@ describe('FederatedCard', () => {
     expect(badge).toBeInTheDocument();
   });
 
+  it('displays secured badge when authenticated', () => {
+    render(<FederatedCard title="Test Card" />);
+    
+    const securedBadge = screen.getByText('✓ Secured');
+    expect(securedBadge).toBeInTheDocument();
+  });
+
   it('applies custom className when provided', () => {
     const customClass = 'custom-test-class';
     const { container } = render(
@@ -112,5 +140,35 @@ describe('FederatedCard', () => {
     card.dispatchEvent(enterEvent);
     
     expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
+  describe('when not authenticated', () => {
+    beforeEach(() => {
+      (useRemoteAuth as any).mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    });
+
+    it('shows authentication required message', () => {
+      render(<FederatedCard title="Test Card" />);
+      
+      expect(screen.getByText('Authentication Required')).toBeInTheDocument();
+      expect(screen.getByText('You must be authenticated to view this content.')).toBeInTheDocument();
+    });
+
+    it('does not show card content', () => {
+      render(<FederatedCard title="Test Card" description="Test description" />);
+      
+      expect(screen.queryByText('Test Card')).not.toBeInTheDocument();
+      expect(screen.queryByText('Test description')).not.toBeInTheDocument();
+    });
+
+    it('does not show secured badge', () => {
+      render(<FederatedCard title="Test Card" />);
+      
+      expect(screen.queryByText('✓ Secured')).not.toBeInTheDocument();
+    });
   });
 });

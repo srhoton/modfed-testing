@@ -1,10 +1,14 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
 import path from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const isProd = mode === 'production';
+  
+  return {
   plugins: [
     react(),
     federation({
@@ -26,6 +30,7 @@ export default defineConfig({
       },
     }),
   ],
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -38,23 +43,46 @@ export default defineConfig({
   server: {
     port: 3001,
     strictPort: true,
-    cors: true,
+    cors: {
+      origin: isProd
+        ? ['https://yourdomain.com', 'https://app.yourdomain.com']
+        : ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001'],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    },
   },
   preview: {
     port: 3001,
     strictPort: true,
-    cors: true,
+    cors: {
+      origin: isProd
+        ? ['https://yourdomain.com', 'https://app.yourdomain.com']
+        : ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001'],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    },
+    headers: {
+      'Access-Control-Allow-Origin': 'http://localhost:3000',
+      'Access-Control-Allow-Credentials': 'true',
+    },
   },
   build: {
     target: 'esnext',
-    minify: false,
+    minify: isProd,
     cssCodeSplit: false,
     rollupOptions: {
       output: {
+        format: 'es',
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]',
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
         },
       },
     },
   },
+  };
 });

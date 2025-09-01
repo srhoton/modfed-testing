@@ -7,6 +7,7 @@ import path from 'path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const federatedSiteUrl = env.VITE_FEDERATED_SITE_URL || 'http://localhost:3001';
+  const isProd = mode === 'production';
   
   return {
   plugins: [
@@ -48,16 +49,26 @@ export default defineConfig(({ mode }) => {
   server: {
     port: 3000,
     strictPort: true,
-    cors: true,
+    cors: isProd
+      ? {
+          origin: ['https://yourdomain.com', 'https://app.yourdomain.com'],
+          credentials: true,
+        }
+      : true,
   },
   preview: {
     port: 3000,
     strictPort: true,
-    cors: true,
+    cors: isProd
+      ? {
+          origin: ['https://yourdomain.com', 'https://app.yourdomain.com'],
+          credentials: true,
+        }
+      : true,
   },
   build: {
     target: 'esnext',
-    minify: false,
+    minify: isProd,
     cssCodeSplit: false,
     rollupOptions: {
       output: {
